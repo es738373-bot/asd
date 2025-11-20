@@ -1,0 +1,127 @@
+
+1) #include <iostream>
+#include <vector>
+#include <queue>
+#include <set>
+#include <algorithm>
+using namespace std;
+
+// Описание структуры состояния
+struct State {
+    vector<int> board;       // текущее состояние доски
+    int moves;               // количество сделанных ходов
+    double f_score;          // оценка стоимости (f = g + h)
+};
+
+// Определяем порядок сортировки приоритетной очереди
+struct Compare {
+    bool operator()(const State &s1, const State &s2) {
+        return s1.f_score > s2.f_score; // наименьшая оценка выходит первой
+    }
+};
+
+// Эвристика: Сумма расстояний Манхэттена
+double heuristic(const vector<int> &state) {
+    double sum = 0;
+    for (int i = 0; i < 16; ++i) {
+        if (state[i] != 0) { // пропускаем пустую ячейку
+            int target_row = (state[i] - 1) / 4;
+            int target_col = (state[i] - 1) % 4;
+            int current_row = i / 4;
+            int current_col = i % 4;
+            sum += abs(target_row - current_row) + abs(target_col - current_col);
+        }
+    }
+    return sum;
+}
+
+// Проверка достижения целевого состояния
+bool isGoal(const vector<int> &state) {
+    for (int i = 0; i < 16; ++i) {
+        if ((i != 15 && state[i] != (i + 1))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Реализация A* алгоритма
+int aStarPuzzle(const vector<int> &start) {
+    priority_queue<State, vector<State>, Compare> open;
+    set<vector<int>> closed;
+
+    // Начальное состояние добавляется в очередь
+    open.push({start, 0, heuristic(start)});
+
+    while (!open.empty()) {
+        State curr = open.top(); open.pop();
+
+        if (isGoal(curr.board)) {
+            return curr.moves;
+        }
+
+        if (closed.find(curr.board) != closed.end()) {
+            continue;
+        }
+
+        closed.insert(curr.board);
+
+        // Нахождение индекса пустой клетки (ячейки с нулём)
+        int emptyIndex = find(curr.board.begin(), curr.board.end(), 0) - curr.board.begin();
+        int row = emptyIndex / 4;
+        int col = emptyIndex % 4;
+
+        // Направления движения: верх, низ, лево, право
+        vector<pair<int, int>> directions{{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+
+        for (auto dir : directions) {
+            int newRow = row + dir.first;
+            int newCol = col + dir.second;
+
+            if (newRow >= 0 && newRow < 4 && newCol >= 0 && newCol < 4) { // проверка границ
+                // Создание копии доски
+                vector<int> newBoard = curr.board;
+
+                // Перемещаем элементы (меняем пустую клетку)
+                swap(newBoard[row * 4 + col], newBoard[newRow * 4 + newCol]);
+
+                // Если новое состояние ещё не обрабатывалось
+                if (closed.find(newBoard) == closed.end()) {
+                    State neighbor{
+                        newBoard,                 // новая доска
+                        curr.moves + 1,           // увеличиваем счётчик ходов
+                        curr.moves + 1 + heuristic(newBoard) // вычисляем оценочную стоимость
+                    };
+
+                    open.push(neighbor);
+                }
+            }
+        }
+    }
+    return -1; // решение не найдено
+}
+
+// Пример запуска программы с ручным вводом начальных значений
+int main() {
+    vector<int> initialState(16);
+
+    // Ручной ввод стартового положения головоломки
+    cout << "Введите начальные значения для головоломки \"15\" (каждая строка состоит из 4 чисел):\n";
+    for (int i = 0; i < 16; ++i) {
+        cin >> initialState[i];
+    }
+
+    // Запуск поиска оптимального решения
+    int result = aStarPuzzle(initialState);
+
+    if(result != -1) {
+        cout << "Минимальное количество ходов: " << result << endl;
+    } else {
+        cout << "Решение не найдено." << endl;
+    }
+
+    return 0;
+}
+
+Результат: Введеная строка:{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0, 13, 14, 15, 12}
+          Результат: Минимальное количество ходов: 4  
